@@ -28,14 +28,19 @@ struct dummy_obj {
 std::unordered_map<unsigned int, struct peer> peer_db;
 
 void * process_thread(void *obj) {
-	char buffer[2048];
-	memset(buffer, 0, 2048);
-	int client_fd = ((struct dummy_obj *)obj)->client_fd;
-	int len = read(client_fd, buffer, 2048);
-	fprintf(stdout, "Client Mesg: %s\n", buffer);
-	len = write(client_fd, "Got your message", 16);
-	close(client_fd);
-	return NULL;
+	while (1) {
+	    char buffer[2048];
+	    memset(buffer, 0, 2048);
+	    int client_fd = ((struct dummy_obj *)obj)->client_fd;
+	    int len = read(client_fd, buffer, 2048);
+	    fprintf(stdout, "Client Mesg: %s\n", buffer);
+	    len = write(client_fd, "Got your message", 16);
+	    char *token = strtok(buffer, " \n");
+	    if (strcmp(token, "EXIT") == 0 ) {
+	    	close(client_fd);
+	        return NULL;
+	    }
+	}
 }
 
 int main(int argc, char ** argv) {
