@@ -10,6 +10,9 @@
 #include <pthread.h>
 #include "common.h"
 
+#define LOCK(X) pthread_mutex_lock(&X);
+#define UNLOCK(X) pthread_mutex_unlock(&X);
+
 struct peer {
 	unsigned int ipaddr;
 	int client_fd;
@@ -25,6 +28,7 @@ struct dummy_obj {
 	int client_fd;
 };
 
+pthread_mutex_t dblock;
 
 struct peer * head;
 
@@ -43,19 +47,25 @@ void insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
 	newrfc->next = *rfcdb;
 	*rfcdb = newrfc;
 }
+
 void * process_thread(void *obj) {
+    
     int client_fd = ((struct dummy_obj *)obj)->client_fd;
     unsigned int ip_addr = ((struct dummy_obj *)obj)->cliaddr.sin_addr.s_addr;
 
 	while (1) {
 	    char buffer[MAX_BUFFER_SIZE];
-            char * saveptr = NULL;
+        char * saveptr = NULL;
+	    
 	    memset(buffer, 0, MAX_BUFFER_SIZE);
 	    int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
 	    fprintf(stdout, "Client Mesg: %s\n", buffer);
 	    const char *token = strtok_r(buffer, " \n", &saveptr);
 
 	    if (strcmp(token, "EXIT") == 0 ) {
+	    	
+	    	LOCK(dblock);
+	    	
 	    	struct peer * temp = head;
 	    	while (temp != NULL) {
 	    		if (client_fd == temp->client_fd && temp->active == true) {
@@ -63,9 +73,15 @@ void * process_thread(void *obj) {
 	    		}
 	    		temp = temp->next;
 	    	}
+	    	UNLOCK(dblock);
+	    	
 	    	len = write(client_fd, "Got your message, closing connection", 16);
+	    	if (len < 0) {
+	        	fprintf(stderr, "write error: %s\n", strerror(errno));
+	        }
 	    	close(client_fd);
 	        return NULL;
+
 	    } else if (strcmp(token, "ADD") == 0) {
 
 
@@ -91,6 +107,7 @@ void * process_thread(void *obj) {
 	    	newrfc->rfcnum = rfcnum;
 	    	strncpy(newrfc->title,token,MAX_TITLE);
 
+	    	LOCK(dblock);
 	    	if (head == NULL) {
 	    		head = temp;
 	    		head->rfchead = newrfc;
@@ -111,9 +128,16 @@ void * process_thread(void *obj) {
 	    		    insertrfc(&head->rfchead, newrfc);
 	    		}
 	    	}
+	    	UNLOCK(dblock);
+	    	
 	    	len = write(client_fd, "Got your message, RFC added", 16);
-	    
+	    	if (len < 0) {
+	        	fprintf(stderr, "write error: %s\n", strerror(errno));
+	        }
+
         } else if (strcmp(token, "LIST") == 0) {
+        	LOCK(dblock);
+	    	
 	    	struct peer * temp = head;
 	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
 	        char tmpbuf[MAX_BUFFER_SIZE] = "";
@@ -128,13 +152,23 @@ void * process_thread(void *obj) {
 	        	}
 	        	temp = temp->next;
 	        }
+	        UNLOCK(dblock);
+	        
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
+
+	        if (len < 0) {
+	        	fprintf(stderr, "write error: %s\n", strerror(errno));
+	        }
 	    
 	    } else if(strcmp(token, "LOOKUP") == 0) {
+	    	
 	    	token = strtok_r(NULL, " \n", &saveptr);
 	    	token = strtok_r(NULL, " \n", &saveptr);
+	    	
 	    	int rfcnum = atoi(token);
 
+	    	LOCK(dblock);
+	    	
 	    	struct peer * temp = head;
 	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
 	        char tmpbuf[MAX_BUFFER_SIZE] = "";
@@ -151,6 +185,8 @@ void * process_thread(void *obj) {
 	        	}
 	        	temp = temp->next;
 	        }
+
+	        UNLOCK(dblock);
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
 	        if (len < 0) {
 	        	fprintf(stderr, "write error: %s\n", strerror(errno));
@@ -174,6 +210,12 @@ int main(int argc, char ** argv) {
 		fprintf(stderr, "./server <port no>");
 		exit(1);
 	}
+    
+    if (pthread_mutex_init(&dblock, NULL) != 0) {
+        fprintf(stderr, "mutex init failed: %s", strerror(errno));
+        exit(1);
+    }
+
 	port = atoi(argv[1]);
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
@@ -207,5 +249,6 @@ int main(int argc, char ** argv) {
             fprintf(stderr, "Unable to start a thread\n"); 
         }  
 	}
+	pthread_mutex_destroy(&dblock);
 	return 0;
 }
