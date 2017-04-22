@@ -52,8 +52,8 @@ void insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
 	*rfcdb = newrfc;
 }
 void * process_thread(void *obj) {
-        int client_fd = ((struct dummy_obj *)obj)->client_fd;
-        unsigned int ip_addr = ((struct dummy_obj *)obj)->cliaddr.sin_addr.s_addr;
+    int client_fd = ((struct dummy_obj *)obj)->client_fd;
+    unsigned int ip_addr = ((struct dummy_obj *)obj)->cliaddr.sin_addr.s_addr;
 
 	while (1) {
 	    char buffer[2048];
@@ -74,8 +74,7 @@ void * process_thread(void *obj) {
 	    	len = write(client_fd, "Got your message, closing connection", 16);
 	    	close(client_fd);
 	        return NULL;
-	    }
-	    if (strcmp(token, "ADD") == 0) {
+	    } else if (strcmp(token, "ADD") == 0) {
 
 
 	    	struct peer * temp = (struct peer *)calloc(1,sizeof(struct peer));
@@ -112,7 +111,7 @@ void * process_thread(void *obj) {
 	    				insertrfc(&iter->rfchead, newrfc);
 	    				break;
 	    			}
-                             iter=iter->next;
+                    iter=iter->next;
 	    		}
 	    		if (iter == NULL) {
 	    		    temp->next = head;
@@ -122,7 +121,7 @@ void * process_thread(void *obj) {
 	    	}
 	    	len = write(client_fd, "Got your message, RFC added", 16);
 	    
-            } else if (strcmp(token, "LIST") == 0) {
+        } else if (strcmp(token, "LIST") == 0) {
 	    	struct peer * temp = head;
 	    	char sendbuffer[65536] = "";
 	        char tmpbuf[2048] = "";
@@ -138,7 +137,33 @@ void * process_thread(void *obj) {
 	        	temp = temp->next;
 	        }
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
-	    }
+	    
+	    } else if(strcmp(token, "LOOKUP") == 0) {
+	    	token = strtok_r(NULL, " \n", &saveptr);
+	    	token = strtok_r(NULL, " \n", &saveptr);
+	    	int rfcnum = atoi(token);
+
+	    	struct peer * temp = head;
+	    	char sendbuffer[65536] = "";
+	        char tmpbuf[2048] = "";
+	        while (temp!= NULL) {
+	        	struct rfclist * iter = temp->rfchead;
+	        	while (iter != NULL) {
+	        	       if (iter->rfcnum == rfcnum) {
+	        	           snprintf(tmpbuf, MAX_NAME_LEN, "hostname %s port %d\n", 
+	        		                temp->peer_name, temp->port);
+	        	           strncat(sendbuffer, tmpbuf, 65536 - strlen(sendbuffer));
+	        	           fprintf(stderr, "%s\n", sendbuffer);
+	        	       }
+	        	       iter = iter->next;
+	        	}
+	        	temp = temp->next;
+	        }
+	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
+	        if (len < 0) {
+	        	fprintf(stderr, "write error: %s\n", strerror(errno));
+	        }
+	    } 
 	}
 }
 

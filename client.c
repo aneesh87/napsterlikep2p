@@ -112,21 +112,22 @@ int main(int argc, char ** argv) {
             break;
 
             case 2: {
-                /*
-                snprintf(buffer, MAX_BUFFER_SIZE, 
-                         "LOOKUP RFC %d P2P-CI/1.0\nHost: %s\nPort: %d\nTitle: %s\n", 
+                memset(buffer, 0, 2048);
+                int rfcnum;
+                fprintf(stdout, "Enter number of the RFC you wish to search");
+                scanf("%d",&rfcnum);
+                snprintf(buffer, MAX_BUFFER_SIZE,"LOOKUP RFC %d P2P-CI/1.0\nHost: %s\nPort: %d\n", 
                           rfcnum,hostname,myport);
-                         int len = write(sock, buffer, 2048);
-                         if (len < 0) {
-                             fprintf(stderr, "write error: %s\n", strerror(errno));
-                         }
-                         memset(buffer, 0, 2048);
-                         len = read(sock,  buffer, 2048);
-                         if (len < 0) {
-                             fprintf(stderr, "read error: %s\n", strerror(errno));
-                         }
-                         printf("Server Replied: %s\n", buffer);
-                         */
+                int len = write(sock, buffer, 2048);
+                if (len < 0) {
+                    fprintf(stderr, "write error: %s\n", strerror(errno));
+                }
+                memset(buffer, 0, 2048);
+                len = read(sock,  buffer, 2048);
+                if (len < 0) {
+                    fprintf(stderr, "read error: %s\n", strerror(errno));
+                }
+                printf("Server Replied: %s\n", buffer);
 
             }
             break;

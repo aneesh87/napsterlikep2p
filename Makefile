@@ -7,5 +7,5 @@ pserver: server.c
 	gcc -g -pthread server.c -o pserver
 
 clean:
-	-rm -f *.o
+	-rm -f *.o *.out
 	-rm -f pclient pserver
