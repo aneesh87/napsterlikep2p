@@ -8,18 +8,10 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "common.h"
 
-#define MAX_NAME_LEN 255
-#define MAX_BUFFER_SIZE 2048
 
-struct rfcdb {
-    char title[MAX_NAME_LEN];
-    int number;
-    char version[MAX_NAME_LEN];
-    struct rfcdb * next;
-};
-
-struct rfcdb * head;
+struct rfclist * head;
 
 int main(int argc, char ** argv) {
     int sock;
@@ -36,9 +28,9 @@ int main(int argc, char ** argv) {
     scanf("%d", &numrfc);
     int i;
     for(i = 1; i<=numrfc; i++) {
-        struct rfcdb * tmp = (struct rfcdb*)calloc(1, sizeof(struct rfcdb));
+        struct rfclist * tmp = (struct rfclist*)calloc(1, sizeof(struct rfclist));
         fprintf(stdout, "Enter RFC number:");
-        scanf("%d",&tmp->number);
+        scanf("%d",&tmp->rfcnum);
         fprintf(stdout, "Enter RFC title:");
         scanf("%*[^\n]");
         scanf("%*c");
@@ -90,18 +82,18 @@ int main(int argc, char ** argv) {
         scanf("%d",&ch);
         switch(ch) {
             case 1: {
-                    struct rfcdb * temp = head;
+                    struct rfclist * temp = head;
                     for (i=1; i<=numrfc; i++) {
-                         memset(buffer, 0, 2048);
+                         memset(buffer, 0, MAX_BUFFER_SIZE);
                          snprintf(buffer, MAX_BUFFER_SIZE, 
                                   "ADD RFC %d P2P-CI/1.0\nHost: %s\nPort: %d\nTitle: %s\n", 
-                                  temp->number,hostname,myport,temp->title);
-                         int len = write(sock, buffer, 2048);
+                                  temp->rfcnum,hostname,myport,temp->title);
+                         int len = write(sock, buffer, MAX_BUFFER_SIZE);
                          if (len < 0) {
                              fprintf(stderr, "write error: %s\n", strerror(errno));
                          }
-                         memset(buffer, 0, 2048);
-                         len = read(sock,  buffer, 2048);
+                         memset(buffer, 0, MAX_BUFFER_SIZE);
+                         len = read(sock,  buffer, MAX_BUFFER_SIZE);
                          if (len < 0) {
                              fprintf(stderr, "read error: %s\n", strerror(errno));
                          }
@@ -112,18 +104,18 @@ int main(int argc, char ** argv) {
             break;
 
             case 2: {
-                memset(buffer, 0, 2048);
+                memset(buffer, 0, MAX_BUFFER_SIZE);
                 int rfcnum;
                 fprintf(stdout, "Enter number of the RFC you wish to search");
                 scanf("%d",&rfcnum);
                 snprintf(buffer, MAX_BUFFER_SIZE,"LOOKUP RFC %d P2P-CI/1.0\nHost: %s\nPort: %d\n", 
                           rfcnum,hostname,myport);
-                int len = write(sock, buffer, 2048);
+                int len = write(sock, buffer, MAX_BUFFER_SIZE);
                 if (len < 0) {
                     fprintf(stderr, "write error: %s\n", strerror(errno));
                 }
-                memset(buffer, 0, 2048);
-                len = read(sock,  buffer, 2048);
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                len = read(sock,  buffer, MAX_BUFFER_SIZE);
                 if (len < 0) {
                     fprintf(stderr, "read error: %s\n", strerror(errno));
                 }
@@ -134,16 +126,16 @@ int main(int argc, char ** argv) {
 
             case 3: {
 
-                        memset(buffer, 0, 2048);
+                        memset(buffer, 0, MAX_BUFFER_SIZE);
                         snprintf(buffer, MAX_BUFFER_SIZE, 
                                  "LIST ALL P2P-CI/1.0\nHost: %s\nPort: %d\n", 
                                  hostname,myport);
-                         int len = write(sock, buffer, 2048);
+                         int len = write(sock, buffer, MAX_BUFFER_SIZE);
                          if (len < 0) {
                              fprintf(stderr, "write error: %s\n", strerror(errno));
                          }
-                         char recvbuffer[65536];
-                         len = read(sock,  recvbuffer, 65536);
+                         char recvbuffer[LARGE_BUFFER_SIZE];
+                         len = read(sock,  recvbuffer, LARGE_BUFFER_SIZE);
                          if (len < 0) {
                              fprintf(stderr, "read error: %s\n", strerror(errno));
                          }
@@ -153,7 +145,7 @@ int main(int argc, char ** argv) {
 
             case 4:{
                 strcpy(buffer, "EXIT");
-                int len = write(sock, buffer, 2048);
+                int len = write(sock, buffer, MAX_BUFFER_SIZE);
                 if (len < 0) {
                     fprintf(stderr, "write error: %s\n", strerror(errno));
                 }

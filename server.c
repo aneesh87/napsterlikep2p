@@ -8,16 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "common.h"
 
-#define true 1
-#define false 0
-#define MAX_NAME_LEN 255
-#define MAX_TITLE 1024
-struct rfclist {
-	int rfcnum;
-	char title[MAX_TITLE];
-	struct rfclist * next;
-};
 struct peer {
 	unsigned int ipaddr;
 	int client_fd;
@@ -56,10 +48,10 @@ void * process_thread(void *obj) {
     unsigned int ip_addr = ((struct dummy_obj *)obj)->cliaddr.sin_addr.s_addr;
 
 	while (1) {
-	    char buffer[2048];
+	    char buffer[MAX_BUFFER_SIZE];
             char * saveptr = NULL;
-	    memset(buffer, 0, 2048);
-	    int len = read(client_fd, buffer, 2048);
+	    memset(buffer, 0, MAX_BUFFER_SIZE);
+	    int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
 	    fprintf(stdout, "Client Mesg: %s\n", buffer);
 	    const char *token = strtok_r(buffer, " \n", &saveptr);
 
@@ -123,14 +115,14 @@ void * process_thread(void *obj) {
 	    
         } else if (strcmp(token, "LIST") == 0) {
 	    	struct peer * temp = head;
-	    	char sendbuffer[65536] = "";
-	        char tmpbuf[2048] = "";
+	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
+	        char tmpbuf[MAX_BUFFER_SIZE] = "";
 	        while (temp!= NULL) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
 	        	       snprintf(tmpbuf, MAX_NAME_LEN, "RFC number %d title %s hostname %s port %d\n", 
 	        		            iter->rfcnum, iter->title, temp->peer_name, temp->port);
-	        	       strncat(sendbuffer, tmpbuf, 65536 - strlen(sendbuffer));
+	        	       strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
 	        	       fprintf(stderr, "%s\n", sendbuffer);
 	        	       iter= iter->next;
 	        	}
@@ -144,15 +136,15 @@ void * process_thread(void *obj) {
 	    	int rfcnum = atoi(token);
 
 	    	struct peer * temp = head;
-	    	char sendbuffer[65536] = "";
-	        char tmpbuf[2048] = "";
+	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
+	        char tmpbuf[MAX_BUFFER_SIZE] = "";
 	        while (temp!= NULL) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
 	        	       if (iter->rfcnum == rfcnum) {
 	        	           snprintf(tmpbuf, MAX_NAME_LEN, "hostname %s port %d\n", 
 	        		                temp->peer_name, temp->port);
-	        	           strncat(sendbuffer, tmpbuf, 65536 - strlen(sendbuffer));
+	        	           strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
 	        	           fprintf(stderr, "%s\n", sendbuffer);
 	        	       }
 	        	       iter = iter->next;
@@ -207,21 +199,13 @@ int main(int argc, char ** argv) {
 			fprintf(stderr, "accept failed: %s\n", strerror(errno));
 			continue;
 		}
-	x.cliaddr = client_addr;
-	x.client_fd = client_fd;
-
+	    x.cliaddr = client_addr;
+	    x.client_fd = client_fd;
+	    
 		pthread_t peer_thread;
         if (pthread_create(&peer_thread, NULL, &process_thread, &x) != 0) {
             fprintf(stderr, "Unable to start a thread\n"); 
         }  
-		/*
-		peer * x = new peer;
-		x->client_fd =  client_fd;
-		x->active = true;
-		x->ipaddr = client_addr.sin_addr.s_addr;
-		peer_db[client_fd] = *x;
-		pthread_create
-		*/
 	}
 	return 0;
 }
