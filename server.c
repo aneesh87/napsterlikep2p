@@ -32,20 +32,30 @@ pthread_mutex_t dblock;
 
 struct peer * head;
 
-void insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
+int insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
 	if (*rfcdb == NULL) {
 		*rfcdb = newrfc;
-		return;
+		return 0;
 	}
 	struct rfclist * tmp = *rfcdb;
 	while (tmp) {
 		if (tmp->rfcnum == newrfc->rfcnum) {
-			return;
+			return -1;
 		}
 		tmp = tmp->next;
 	}
 	newrfc->next = *rfcdb;
 	*rfcdb = newrfc;
+	return 0;
+}
+
+void free_rfclist (struct rfclist * rfcdb) {
+	struct rfclist * tmp = rfcdb;
+	while (tmp != NULL) {
+		struct rfclist * element = tmp;
+		tmp = tmp->next;
+		free(element);
+	}
 }
 
 void * process_thread(void *obj) {
@@ -70,6 +80,8 @@ void * process_thread(void *obj) {
 	    	while (temp != NULL) {
 	    		if (client_fd == temp->client_fd && temp->active == true) {
 	    			temp->active = false;
+	    			free(temp->rfchead);
+	    			temp->rfchead = NULL;
 	    		}
 	    		temp = temp->next;
 	    	}
@@ -117,7 +129,10 @@ void * process_thread(void *obj) {
 	    			if (iter->port == temp->port && strcmp(iter->peer_name,temp->peer_name)==0) {
 	    				iter->active = true;
 	    				free(temp);
-	    				insertrfc(&iter->rfchead, newrfc);
+	    				int rc = insertrfc(&iter->rfchead, newrfc);
+	    				if (rc < 0) {
+	    					free(newrfc);
+	    				}
 	    				break;
 	    			}
                     iter=iter->next;
@@ -125,7 +140,7 @@ void * process_thread(void *obj) {
 	    		if (iter == NULL) {
 	    		    temp->next = head;
 	    		    head = temp;
-	    		    insertrfc(&head->rfchead, newrfc);
+	    		    (void)insertrfc(&head->rfchead, newrfc);
 	    		}
 	    	}
 	    	UNLOCK(dblock);
@@ -187,6 +202,9 @@ void * process_thread(void *obj) {
 	        }
 
 	        UNLOCK(dblock);
+	        if (sendbuffer[0] == '\0') {
+	        	snprintf(sendbuffer, MAX_NAME_LEN, "P2P-CI/1.0 404 Not Found");
+	        }
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
 	        if (len < 0) {
 	        	fprintf(stderr, "write error: %s\n", strerror(errno));

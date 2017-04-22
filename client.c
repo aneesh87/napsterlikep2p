@@ -24,6 +24,8 @@ int main(int argc, char ** argv) {
     int myport, numrfc;
     fprintf(stdout, "Enter port number to listen for peer connections:");
     scanf("%d", &myport);
+
+    
     fprintf(stdout, "Enter the number of RFC this host has:");
     scanf("%d", &numrfc);
     int i;
