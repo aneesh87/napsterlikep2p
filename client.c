@@ -9,9 +9,103 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "common.h"
-
+#include <sys/stat.h>
+#include <pthread.h>
 
 struct rfclist * head;
+int server_sock;
+
+void * process_client(void *myport) {
+
+  int client_fd;
+  struct sockaddr_in client_addr;
+  listen(server_sock, 10);
+  char buffer[MAX_BUFFER_SIZE];
+  int client_len;
+
+  while (1) {
+
+     client_fd = accept(server_sock, (struct sockaddr *) &client_addr, (socklen_t *)&client_len);
+     if (client_fd < 0)  {
+         fprintf(stderr, "accept failed: %s\n", strerror(errno));
+         continue;
+     }
+     char * saveptr = NULL; 
+     memset(buffer, 0, MAX_BUFFER_SIZE);
+     int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
+     fprintf(stdout, "Client Mesg: %s\n", buffer);
+     const char *token = strtok_r(buffer, " \n", &saveptr);
+
+     char tmpbuf[MAX_BUFFER_SIZE] = "";
+     if (strcmp(token,"GET") == 0) {
+         token = strtok_r(NULL, " \n", &saveptr);
+         token = strtok_r(NULL, " \n", &saveptr);
+         int rfcnum = atoi(token);
+
+         struct rfclist *temp = head;
+         while (temp != NULL) {
+
+             if (temp->rfcnum == rfcnum) {
+                  char rfcname[MAX_NAME_LEN] ="";
+                  snprintf(rfcname, MAX_NAME_LEN, "rfc%d", rfcnum);
+                  
+                  FILE * fp = fopen(rfcname, "r");
+                  if (fp == NULL) {
+                      fprintf(stderr, "File not found\n");
+                      temp = NULL;
+                      break;
+                  }
+                  struct stat sb;
+                  stat(rfcname, &sb);
+                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld", (long long) sb.st_size);
+                  int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+                  if (len < 0) {
+                      fprintf(stderr, "write error: %s\n", strerror(errno));
+                  }
+                  int i = 0;
+                  int mesg = 1;
+                  char ch;
+                  memset(tmpbuf, 0, MAX_BUFFER_SIZE);
+                  while((ch=fgetc(fp))!=EOF) {
+                    if(i==1024) {
+                       if (mesg ==1) {
+                          fprintf(stderr,"buffer has %s\n",tmpbuf);
+                       }
+                       sleep(1);
+                       write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
+                       memset(tmpbuf, 0, MAX_BUFFER_SIZE);
+                       i=0;
+                       mesg++;
+                    }
+                    tmpbuf[i]=ch;
+                    i++;
+                  }
+                  fprintf(stderr,"buffer has %s\n",tmpbuf);
+                  write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
+                  fclose(fp);
+                  break;
+              }
+              temp = temp->next;
+         }
+         if (temp == NULL) {
+             snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
+             int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+             if (len < 0) {
+                 fprintf(stderr, "write error: %s\n", strerror(errno));
+             }
+         }
+
+     } else {
+        snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 400 Bad Request");
+        int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+        if (len < 0) {
+            fprintf(stderr, "write error: %s\n", strerror(errno));
+        }
+     }
+     close(client_fd);
+  }
+
+}
 
 int main(int argc, char ** argv) {
     int sock;
@@ -25,7 +119,31 @@ int main(int argc, char ** argv) {
     fprintf(stdout, "Enter port number to listen for peer connections:");
     scanf("%d", &myport);
 
-    
+    {   
+        // start server thread
+        pthread_t stid;
+        server_sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_sock < 0) {
+            fprintf(stderr, "socket() failed: %s", strerror(errno));
+            exit(1);
+        }
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_addr.s_addr = INADDR_ANY;
+        server_addr.sin_port = htons(myport);
+
+        int rc = bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+
+        if (rc != 0) {
+            fprintf(stderr, "Not able to bind to socket: %s\n", strerror(errno));
+            exit(1);
+        }
+
+        if ((pthread_create(&stid, NULL, &process_client, (void *) &myport))!=0) {
+            fprintf(stderr, "Server thread create failed: %s\n", strerror(errno));
+            exit(1);
+        }
+    }
     fprintf(stdout, "Enter the number of RFC this host has:");
     scanf("%d", &numrfc);
     int i;
@@ -123,6 +241,93 @@ int main(int argc, char ** argv) {
                 }
                 printf("Server Replied: %s\n", buffer);
 
+                char * saveptr = NULL;
+                char * token = strtok_r(buffer, " \n", &saveptr);
+                token = strtok_r(NULL, " \n", &saveptr);
+                int status = atoi(token);
+                if (status!= 200) {
+                    continue;
+                }
+                // Take the first host
+                token = strtok_r(NULL, " \n", &saveptr); //OK
+                token = strtok_r(NULL, " \n", &saveptr); //RFC
+                token = strtok_r(NULL, " \n", &saveptr); //Number
+                token = strtok_r(NULL, " \n", &saveptr); //Hostname
+                token = strtok_r(NULL, " \n", &saveptr); //hostname
+                char peerhostname[MAX_NAME_LEN];
+                strncpy(peerhostname, token, MAX_NAME_LEN);
+                token = strtok_r(NULL, " \n", &saveptr); //port
+                token = strtok_r(NULL, " \n", &saveptr);
+                int cport = atoi(token);
+
+                int peersock = socket(AF_INET, SOCK_STREAM, 0);
+                if (peersock < 0) {
+                    fprintf(stderr, "socket() error: %s", strerror(errno));
+                    continue;
+                }
+                struct hostent *peer;
+                struct sockaddr_in peer_addr;
+
+                memset(&peer_addr, 0, sizeof(server_addr));
+                peer_addr.sin_family = AF_INET;
+                peer_addr.sin_port = htons(cport);
+
+                peer=gethostbyname(peerhostname);
+                bcopy((char *)peer->h_addr,(char *)&peer_addr.sin_addr.s_addr,peer->h_length);
+
+                rc = connect(peersock, (struct sockaddr *) &peer_addr, sizeof(peer_addr));
+                if (rc < 0)  {
+                    fprintf(stderr, "connect failed: %s\n", strerror(errno));
+                    continue;
+                }
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                snprintf(buffer, MAX_BUFFER_SIZE,  "GET RFC %d\n", rfcnum);
+                len = write(peersock, buffer, MAX_BUFFER_SIZE);
+                if (len < 0) {
+                    fprintf(stderr, "write error: %s\n", strerror(errno));
+                }
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                len = read(peersock,  buffer, MAX_BUFFER_SIZE);
+
+                fprintf(stderr, "buffer %s\n", buffer);
+
+                // check for status code todo
+
+                char * ch = strstr(buffer, "Content-Length");
+                if (ch == NULL) {
+                    fprintf(stderr, "Unexpected error\n");
+                    continue;
+                }
+
+                while (*ch != ' ') ch++;
+                ch++;
+                long long length = atol(ch);
+                fprintf(stderr, "length %lld\n", length);
+                long long num_message = length/1024;
+                if (length % 1024 !=0) {
+                    num_message++;
+                }
+                char rfcfile[MAX_NAME_LEN] = "";
+                snprintf(rfcfile, MAX_NAME_LEN, "rfc%d", rfcnum);
+                FILE * fp = fopen(rfcfile, "w");
+                if (fp == NULL) {
+                  fprintf(stderr, "Unable to open file %s\n", rfcfile);
+                  continue;
+                }
+
+                long long i = 1;
+                for (;i<=num_message;i++) {
+                    memset(buffer, 0, MAX_BUFFER_SIZE);
+                    len = read(peersock,  buffer, 1024 + 1);
+                    if (len < 0) {
+                        fprintf(stderr, "read error: %s\n", strerror(errno));
+                    }
+                    if (i == 1) {
+                        fprintf(stderr,"%s\n",buffer);
+                    }
+                    fprintf(fp,"%s", buffer);
+                }
+                fclose(fp);
             }
             break;
 
@@ -143,7 +348,7 @@ int main(int argc, char ** argv) {
                          }
                          printf("Server Replied: %s\n",recvbuffer);
 
-            }break;
+            } break;
 
             case 4:{
                 strcpy(buffer, "EXIT");

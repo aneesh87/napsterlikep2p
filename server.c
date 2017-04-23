@@ -191,8 +191,8 @@ void * process_thread(void *obj) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
 	        	       if (iter->rfcnum == rfcnum) {
-	        	           snprintf(tmpbuf, MAX_NAME_LEN, "hostname %s port %d\n", 
-	        		                temp->peer_name, temp->port);
+	        	           snprintf(tmpbuf, MAX_NAME_LEN, "P2P-CI/1.0 200 OK\nRFC %d hostname %s port %d\n", 
+	        		                rfcnum, temp->peer_name, temp->port);
 	        	           strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
 	        	           fprintf(stderr, "%s\n", sendbuffer);
 	        	       }
@@ -203,7 +203,7 @@ void * process_thread(void *obj) {
 
 	        UNLOCK(dblock);
 	        if (sendbuffer[0] == '\0') {
-	        	snprintf(sendbuffer, MAX_NAME_LEN, "P2P-CI/1.0 404 Not Found");
+	        	snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
 	        }
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
 	        if (len < 0) {
