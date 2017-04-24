@@ -42,6 +42,10 @@ void * process_thread(void * obj) {
   fprintf(stdout, "Client Mesg: %s\n", buffer);
   const char *token = strtok_r(buffer, " \n", &saveptr);
 
+  if (token == NULL) {
+      close(client_fd);
+      return(NULL);
+  }
   char tmpbuf[MAX_BUFFER_SIZE] = "";
   if (strcmp(token,"GET") == 0) {
       token = strtok_r(NULL, " \n", &saveptr);
@@ -283,9 +287,15 @@ int main(int argc, char ** argv) {
                   fprintf(stderr, "RFC already in local database\n");
                   continue;
                 }
-
+                
                 char * saveptr = NULL;
                 char * token = strtok_r(buffer, " \n", &saveptr);
+                
+                if (token == NULL) {
+                    fprintf(stderr, "Unexpected error\n");
+                    continue;
+                }
+
                 token = strtok_r(NULL, " \n", &saveptr);
                 int status = atoi(token);
                 if (status!= 200) {

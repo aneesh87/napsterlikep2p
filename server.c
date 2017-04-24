@@ -29,6 +29,56 @@ pthread_mutex_t dblock;
 
 struct peer * head;
 
+void * process_cmd(void * obj) {
+
+    int ch;
+    while (1) {
+        fprintf(stdout, "\n\n Menu\n");
+        fprintf(stdout, "1. Active Peers\n");
+        fprintf(stdout, "2. Inactive Peers\n");
+        fprintf(stdout, "3. Exit\n");
+        fprintf(stdout, "Enter choice: ");
+        scanf("%d",&ch);
+        switch(ch) {
+            case 1: {
+            	LOCK(dblock);
+	    	    struct peer * temp = head;
+	    	    int i = 1;
+	            while (temp!= NULL) {
+	            	if (temp->active) {
+	        	        fprintf(stdout, "%d: Hostname %s port %d\n", i, temp->peer_name, temp->port);
+	        	        i++;
+	        	    }
+	        	    temp = temp->next;
+	            }
+	            UNLOCK(dblock);
+            } break;
+            
+            case 2: {
+            	LOCK(dblock);
+	    	    struct peer * temp = head;
+	    	    int i = 1;
+	            while (temp!= NULL) {
+	            	if (!temp->active) {
+	        	        fprintf(stdout, "%d: Hostname %s port %d\n", i, temp->peer_name, temp->port);
+	        	        i++;
+	        	    }
+	        	    temp = temp->next;
+	            }
+	            UNLOCK(dblock);
+
+            } break;
+
+            case 3: {
+                exit(0);
+            } break;
+
+            default: 
+                  fprintf(stderr, "Invalid choice\n");
+        }  
+    }
+}
+
 void free_rfclist (struct rfclist * rfcdb) {
 	struct rfclist * tmp = rfcdb;
 	while (tmp != NULL) {
@@ -242,6 +292,13 @@ int main(int argc, char ** argv) {
 			    strerror(errno));
 		exit(1);
 	}
+
+	pthread_t command_thread;
+
+	if (pthread_create(&command_thread, NULL, &process_cmd, NULL) != 0) {
+        fprintf(stderr, "Unable to start command thread\n");
+    }  
+
 	listen(sock, 10);
 	while (1) {
 		client_fd = accept(sock, (struct sockaddr *) &client_addr, (socklen_t *)&client_len);
@@ -254,7 +311,7 @@ int main(int argc, char ** argv) {
 	    
 		pthread_t peer_thread;
         if (pthread_create(&peer_thread, NULL, &process_thread, &x) != 0) {
-            fprintf(stderr, "Unable to start a thread\n"); 
+            fprintf(stderr, "Unable to start peer thread\n"); 
         }  
 	}
 	pthread_mutex_destroy(&dblock);
