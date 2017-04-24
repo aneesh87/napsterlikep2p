@@ -29,23 +29,6 @@ pthread_mutex_t dblock;
 
 struct peer * head;
 
-int insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
-	if (*rfcdb == NULL) {
-		*rfcdb = newrfc;
-		return 0;
-	}
-	struct rfclist * tmp = *rfcdb;
-	while (tmp) {
-		if (tmp->rfcnum == newrfc->rfcnum) {
-			return -1;
-		}
-		tmp = tmp->next;
-	}
-	newrfc->next = *rfcdb;
-	*rfcdb = newrfc;
-	return 0;
-}
-
 void free_rfclist (struct rfclist * rfcdb) {
 	struct rfclist * tmp = rfcdb;
 	while (tmp != NULL) {
@@ -120,7 +103,7 @@ void * process_thread(void *obj) {
 	    	token = strtok_r(NULL, " \n", &saveptr);
 	    	temp->port = atoi(token);
 	    	token = strtok_r(NULL, " \n", &saveptr);
-	    	token = strtok_r(NULL, " \n", &saveptr);
+	    	token = strtok_r(NULL, "\n", &saveptr); 
 
 	    	struct rfclist * newrfc = (struct rfclist *) calloc(1, sizeof(struct rfclist));
 	    	newrfc->rfcnum = rfcnum;

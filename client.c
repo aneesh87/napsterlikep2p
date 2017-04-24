@@ -69,7 +69,7 @@ void * process_client(void *myport) {
                   }
                   struct stat sb;
                   stat(rfcname, &sb);
-                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s", 
+                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s\n", 
                            (long long) sb.st_size, temp->title);
                   int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
                   if (len < 0) {
@@ -168,12 +168,7 @@ int main(int argc, char ** argv) {
         scanf("%*[^\n]");
         scanf("%*c");
         fgets(tmp->title, MAX_NAME_LEN, stdin);
-        if (head == NULL) {
-            head = tmp;
-        } else {
-            tmp->next = head;
-            head = tmp;
-        }
+        (void)insertrfc(&head, tmp);
     }
     
     int rc = 0;
@@ -354,6 +349,11 @@ int main(int argc, char ** argv) {
                     fprintf(fp,"%s", buffer);
                 }
                 fclose(fp);
+
+                struct rfclist *rfctemp = (struct rfclist *)calloc(1, sizeof(struct rfclist));
+                rfctemp->rfcnum = rfcnum;
+                strncpy(rfctemp->title, rfc_title, MAX_TITLE);
+                (void)insertrfc(&head, rfctemp);
 
                 memset(buffer, 0, MAX_BUFFER_SIZE);
                 snprintf(buffer, MAX_BUFFER_SIZE, 

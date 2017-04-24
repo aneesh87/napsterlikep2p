@@ -15,3 +15,20 @@ struct rfclist {
 	char title[MAX_TITLE];
 	struct rfclist * next;
 };
+
+int insertrfc (struct rfclist ** rfcdb, struct rfclist * newrfc) {
+	if (*rfcdb == NULL) {
+		*rfcdb = newrfc;
+		return 0;
+	}
+	struct rfclist * tmp = *rfcdb;
+	while (tmp) {
+		if (tmp->rfcnum == newrfc->rfcnum) {
+			return -1;
+		}
+		tmp = tmp->next;
+	}
+	newrfc->next = *rfcdb;
+	*rfcdb = newrfc;
+	return 0;
+}
