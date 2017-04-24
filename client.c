@@ -32,65 +32,55 @@ int check_if_rfc_exists(int rfcnum) {
   return false;
 }
 
-void * process_client(void *myport) {
+void * process_thread(void * obj) {
 
-  int client_fd;
-  struct sockaddr_in client_addr;
-  listen(server_sock, 10);
+  int client_fd = *((int *)obj);
   char buffer[MAX_BUFFER_SIZE];
-  int client_len;
+  char * saveptr = NULL; 
+  memset(buffer, 0, MAX_BUFFER_SIZE);
+  int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
+  fprintf(stdout, "Client Mesg: %s\n", buffer);
+  const char *token = strtok_r(buffer, " \n", &saveptr);
 
-  while (1) {
+  char tmpbuf[MAX_BUFFER_SIZE] = "";
+  if (strcmp(token,"GET") == 0) {
+      token = strtok_r(NULL, " \n", &saveptr);
+      token = strtok_r(NULL, " \n", &saveptr);
+      int rfcnum = atoi(token);
 
-     client_fd = accept(server_sock, (struct sockaddr *) &client_addr, (socklen_t *)&client_len);
-     if (client_fd < 0)  {
-         fprintf(stderr, "accept failed: %s\n", strerror(errno));
-         continue;
-     }
-     char * saveptr = NULL; 
-     memset(buffer, 0, MAX_BUFFER_SIZE);
-     int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
-     fprintf(stdout, "Client Mesg: %s\n", buffer);
-     const char *token = strtok_r(buffer, " \n", &saveptr);
+      LOCK(rlock);
+      struct rfclist *temp = head;
+      while (temp != NULL) {
 
-     char tmpbuf[MAX_BUFFER_SIZE] = "";
-     if (strcmp(token,"GET") == 0) {
-         token = strtok_r(NULL, " \n", &saveptr);
-         token = strtok_r(NULL, " \n", &saveptr);
-         int rfcnum = atoi(token);
-
-         LOCK(rlock);
-         struct rfclist *temp = head;
-         while (temp != NULL) {
-
-             if (temp->rfcnum == rfcnum) {
-                  char rfcname[MAX_NAME_LEN] ="";
-                  snprintf(rfcname, MAX_NAME_LEN, "rfc%d", rfcnum);
+          if (temp->rfcnum == rfcnum) {
+              char rfcname[MAX_NAME_LEN] ="";
+              snprintf(rfcname, MAX_NAME_LEN, "rfc%d", rfcnum);
                   
-                  FILE * fp = fopen(rfcname, "r");
-                  if (fp == NULL) {
-                      fprintf(stderr, "File not found\n");
-                      temp = NULL;
-                      break;
-                  }
-                  struct stat sb;
-                  stat(rfcname, &sb);
-                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s\n", 
+              FILE * fp = fopen(rfcname, "r");
+              if (fp == NULL) {
+                  fprintf(stderr, "File not found\n");
+                  temp = NULL;
+                  break;
+              }
+
+              struct stat sb;
+              stat(rfcname, &sb);
+              snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s\n", 
                            (long long) sb.st_size, temp->title);
-                  int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
-                  if (len < 0) {
-                      fprintf(stderr, "write error: %s\n", strerror(errno));
-                  }
-                  int i = 0;
-                  int mesg = 1;
-                  char ch;
-                  memset(tmpbuf, 0, MAX_BUFFER_SIZE);
+              int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+              if (len < 0) {
+                  fprintf(stderr, "write error: %s\n", strerror(errno));
+              }
+              int i = 0;
+              int mesg = 1;
+              char ch;
+              memset(tmpbuf, 0, MAX_BUFFER_SIZE);
 
                   /* Unlock for this long loop */
 
-                  UNLOCK(rlock);
+              UNLOCK(rlock);
 
-                  while((ch=fgetc(fp))!=EOF) {
+              while ((ch=fgetc(fp))!=EOF) {
                     if(i==1024) {
                        if (mesg ==1) {
                           fprintf(stderr,"buffer has %s\n",tmpbuf);
@@ -103,37 +93,58 @@ void * process_client(void *myport) {
                     }
                     tmpbuf[i]=ch;
                     i++;
-                  }
-
-                  LOCK(rlock);
-
-                  fprintf(stderr,"buffer has %s\n",tmpbuf);
-                  write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
-                  fclose(fp);
-                  break;
               }
-              temp = temp->next;
-         }
-         UNLOCK(rlock);
 
-         if (temp == NULL) {
-             snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
-             int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
-             if (len < 0) {
-                 fprintf(stderr, "write error: %s\n", strerror(errno));
-             }
-         }
+              LOCK(rlock);
 
-     } else {
-        snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 400 Bad Request");
-        int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
-        if (len < 0) {
-            fprintf(stderr, "write error: %s\n", strerror(errno));
-        }
-     }
-     close(client_fd);
+              fprintf(stderr,"buffer has %s\n",tmpbuf);
+              write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
+              fclose(fp);
+              break;
+          }
+          temp = temp->next;
+      }
+      UNLOCK(rlock);
+
+      if (temp == NULL) {
+          snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
+          int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+          if (len < 0) {
+              fprintf(stderr, "write error: %s\n", strerror(errno));
+          }
+      }
+
+  } else {
+      snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 400 Bad Request");
+      int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
+      if (len < 0) {
+          fprintf(stderr, "write error: %s\n", strerror(errno));
+      }
   }
+  close(client_fd);
+  return(NULL);
 
+}
+void * process_client(void *myport) {
+
+  int client_fd;
+  struct sockaddr_in client_addr;
+  listen(server_sock, 10);
+  int client_len;
+  pthread_t peer_thread;
+
+  while (1) {
+
+     client_fd = accept(server_sock, (struct sockaddr *) &client_addr, (socklen_t *)&client_len);
+     if (client_fd < 0)  {
+         fprintf(stderr, "accept failed: %s\n", strerror(errno));
+         continue;
+     }
+     
+     if (pthread_create(&peer_thread, NULL, &process_thread, &client_fd) != 0) {
+         fprintf(stderr, "Unable to start a thread\n"); 
+     }  
+  }
 }
 
 int main(int argc, char ** argv) {
