@@ -55,6 +55,22 @@ void free_rfclist (struct rfclist * rfcdb) {
 	}
 }
 
+void db_remove_client(int client_fd) {
+
+   	LOCK(dblock);
+	    	
+	struct peer * temp = head;
+	while (temp != NULL) {
+	   if (client_fd == temp->client_fd && temp->active == true) {
+	       temp->active = false;
+	       free(temp->rfchead);
+	       temp->rfchead = NULL;
+	   }
+	   temp = temp->next;
+	}
+	UNLOCK(dblock);	
+}
+
 void * process_thread(void *obj) {
     
     int client_fd = ((struct dummy_obj *)obj)->client_fd;
@@ -69,21 +85,15 @@ void * process_thread(void *obj) {
 	    fprintf(stdout, "Client Mesg: %s\n", buffer);
 	    const char *token = strtok_r(buffer, " \n", &saveptr);
 
+	    if (token == NULL) {
+	    	db_remove_client(client_fd);
+	    	close(client_fd);
+	    	return (NULL);
+	    }
+
 	    if (strcmp(token, "EXIT") == 0 ) {
-	    	
-	    	LOCK(dblock);
-	    	
-	    	struct peer * temp = head;
-	    	while (temp != NULL) {
-	    		if (client_fd == temp->client_fd && temp->active == true) {
-	    			temp->active = false;
-	    			free(temp->rfchead);
-	    			temp->rfchead = NULL;
-	    		}
-	    		temp = temp->next;
-	    	}
-	    	UNLOCK(dblock);
-	    	
+	    
+	    	db_remove_client(client_fd);
 	    	len = write(client_fd, "Got your message, closing connection", 16);
 	    	if (len < 0) {
 	        	fprintf(stderr, "write error: %s\n", strerror(errno));
