@@ -10,9 +10,6 @@
 #include <pthread.h>
 #include "common.h"
 
-#define LOCK(X) pthread_mutex_lock(&X);
-#define UNLOCK(X) pthread_mutex_unlock(&X);
-
 struct peer {
 	unsigned int ipaddr;
 	int client_fd;

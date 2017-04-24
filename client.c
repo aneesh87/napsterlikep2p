@@ -15,6 +15,18 @@
 struct rfclist * head;
 int server_sock;
 
+int check_if_rfc_exists(int rfcnum) {
+
+  struct rfclist * temp = head;
+  while (temp) {
+    if (temp->rfcnum == rfcnum) {
+      return true;
+    }
+    temp = temp->next;
+  }
+  return false;
+}
+
 void * process_client(void *myport) {
 
   int client_fd;
@@ -57,7 +69,8 @@ void * process_client(void *myport) {
                   }
                   struct stat sb;
                   stat(rfcname, &sb);
-                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld", (long long) sb.st_size);
+                  snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s", 
+                           (long long) sb.st_size, temp->title);
                   int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
                   if (len < 0) {
                       fprintf(stderr, "write error: %s\n", strerror(errno));
@@ -241,6 +254,12 @@ int main(int argc, char ** argv) {
                 }
                 printf("Server Replied: %s\n", buffer);
 
+
+                if (check_if_rfc_exists(rfcnum) == true) {
+                  fprintf(stderr, "RFC already in local database\n");
+                  continue;
+                }
+
                 char * saveptr = NULL;
                 char * token = strtok_r(buffer, " \n", &saveptr);
                 token = strtok_r(NULL, " \n", &saveptr);
@@ -298,6 +317,13 @@ int main(int argc, char ** argv) {
                     fprintf(stderr, "Unexpected error\n");
                     continue;
                 }
+                char rfc_title[MAX_NAME_LEN];
+                char * t = strstr(buffer, "Title");
+                if (t!= NULL) {
+                  while (*t != ' ') t++;
+                  t++;
+                  strncpy(rfc_title, t, MAX_NAME_LEN);
+                }
 
                 while (*ch != ' ') ch++;
                 ch++;
@@ -328,6 +354,22 @@ int main(int argc, char ** argv) {
                     fprintf(fp,"%s", buffer);
                 }
                 fclose(fp);
+
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                snprintf(buffer, MAX_BUFFER_SIZE, 
+                         "ADD RFC %d P2P-CI/1.0\nHost: %s\nPort: %d\nTitle: %s\n", 
+                          rfcnum,hostname,myport,rfc_title);
+                len = write(sock, buffer, MAX_BUFFER_SIZE);
+                if (len < 0) {
+                    fprintf(stderr, "write error: %s\n", strerror(errno));
+                }
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                len = read(sock,  buffer, MAX_BUFFER_SIZE);
+                if (len < 0) {
+                    fprintf(stderr, "read error: %s\n", strerror(errno));
+                }
+                printf("Server Replied: %s\n", buffer);
+            
             }
             break;
 
