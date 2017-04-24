@@ -15,15 +15,20 @@
 struct rfclist * head;
 int server_sock;
 
+pthread_mutex_t rlock;
+
 int check_if_rfc_exists(int rfcnum) {
 
+  LOCK(rlock);
   struct rfclist * temp = head;
   while (temp) {
     if (temp->rfcnum == rfcnum) {
+      UNLOCK(rlock);
       return true;
     }
     temp = temp->next;
   }
+  UNLOCK(rlock);
   return false;
 }
 
@@ -54,6 +59,7 @@ void * process_client(void *myport) {
          token = strtok_r(NULL, " \n", &saveptr);
          int rfcnum = atoi(token);
 
+         LOCK(rlock);
          struct rfclist *temp = head;
          while (temp != NULL) {
 
@@ -79,6 +85,11 @@ void * process_client(void *myport) {
                   int mesg = 1;
                   char ch;
                   memset(tmpbuf, 0, MAX_BUFFER_SIZE);
+
+                  /* Unlock for this long loop */
+
+                  UNLOCK(rlock);
+
                   while((ch=fgetc(fp))!=EOF) {
                     if(i==1024) {
                        if (mesg ==1) {
@@ -93,6 +104,9 @@ void * process_client(void *myport) {
                     tmpbuf[i]=ch;
                     i++;
                   }
+
+                  LOCK(rlock);
+
                   fprintf(stderr,"buffer has %s\n",tmpbuf);
                   write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
                   fclose(fp);
@@ -100,6 +114,8 @@ void * process_client(void *myport) {
               }
               temp = temp->next;
          }
+         UNLOCK(rlock);
+
          if (temp == NULL) {
              snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
              int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
@@ -210,6 +226,7 @@ int main(int argc, char ** argv) {
         scanf("%d",&ch);
         switch(ch) {
             case 1: {
+                    LOCK(rlock);
                     struct rfclist * temp = head;
                     for (i=1; i<=numrfc; i++) {
                          memset(buffer, 0, MAX_BUFFER_SIZE);
@@ -228,6 +245,7 @@ int main(int argc, char ** argv) {
                          printf("Server Replied: %s\n", buffer);
                          temp = temp->next;
                     }
+                    UNLOCK(rlock);
             }
             break;
 
@@ -350,10 +368,14 @@ int main(int argc, char ** argv) {
                 }
                 fclose(fp);
 
+                LOCK(rlock);
+                
                 struct rfclist *rfctemp = (struct rfclist *)calloc(1, sizeof(struct rfclist));
                 rfctemp->rfcnum = rfcnum;
                 strncpy(rfctemp->title, rfc_title, MAX_TITLE);
                 (void)insertrfc(&head, rfctemp);
+                
+                UNLOCK(rlock);
 
                 memset(buffer, 0, MAX_BUFFER_SIZE);
                 snprintf(buffer, MAX_BUFFER_SIZE, 
