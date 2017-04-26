@@ -69,7 +69,7 @@ void * process_thread(void * obj) {
 
               struct stat sb;
               stat(rfcname, &sb);
-              snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 200 OK\nContent-Length %lld\nTitle %s\nContent-Type: text/text\n", 
+              snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 200 OK\nContent-Length: %lld\nContent-Type: text/text\nTitle: %s\n", 
                            (long long) sb.st_size, temp->title);
               fprintf(stdout, "Sending RFC to peer\n");
               int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
@@ -333,7 +333,7 @@ int main(int argc, char ** argv) {
                     continue;
                 }
                 memset(buffer, 0, MAX_BUFFER_SIZE);
-                snprintf(buffer, MAX_BUFFER_SIZE,  "GET RFC %d\n", rfcnum);
+                snprintf(buffer, MAX_BUFFER_SIZE,  "GET RFC %d P2P-CI/1.0\nHost: %s\n", rfcnum, hostname);
                 len = write(peersock, buffer, MAX_BUFFER_SIZE);
                 if (len < 0) {
                     fprintf(stderr, "write error: %s\n", strerror(errno));
@@ -360,7 +360,7 @@ int main(int argc, char ** argv) {
                 }
 
                 char rfc_title[MAX_NAME_LEN];
-                char * t = strstr(buffer, "Title");
+                char * t = strstr(buffer, "Title:");
                 if (t!= NULL) {
                   while (*t != ' ') t++;
                   t++;
