@@ -340,10 +340,24 @@ int main(int argc, char ** argv) {
                 }
                 memset(buffer, 0, MAX_BUFFER_SIZE);
                 len = read(peersock,  buffer, MAX_BUFFER_SIZE);
+                if (len <= 0){
+                  fprintf(stderr, "Peer closed connection\n");
+                  continue;
+                }
+                fprintf(stderr, "Peer Replied: %s\n", buffer);
 
-                fprintf(stderr, "buffer %s\n", buffer);
 
-                // check for status code todo !!
+                // check for status code from peer
+
+                char * c = buffer;
+                while (*c !=' ') c++;
+                c++;
+                int status_code = atoi(c);
+
+                if (status_code != 200) {
+                    fprintf(stderr, "Peer error: %s\n",c);
+                    continue;
+                }
 
                 char rfc_title[MAX_NAME_LEN];
                 char * t = strstr(buffer, "Title");

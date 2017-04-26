@@ -125,7 +125,7 @@ void * process_thread(void *obj) {
 	    if (buffer[0] != '\0') {
 	        fprintf(stdout, "Client Mesg: %s\n", buffer);
 	    }
-	    
+
 	    const char *token = strtok_r(buffer, " \n", &saveptr);
         if (token == NULL) {
             continue;
@@ -133,7 +133,9 @@ void * process_thread(void *obj) {
 	    if (strcmp(token, "EXIT") == 0 ) {
 	    
 	    	db_remove_client(client_fd);
-	    	len = write(client_fd, "Got your message, closing connection", 16);
+	    	char eok[MAX_BUFFER_SIZE];
+	    	strncpy(eok, "P2P-CI/1.0 200 OK\n", MAX_BUFFER_SIZE);
+	    	len = write(client_fd, eok, strlen(eok)+1);
 	    	if (len < 0) {
 	        	fprintf(stderr, "write error: %s\n", strerror(errno));
 	        }
@@ -190,8 +192,11 @@ void * process_thread(void *obj) {
 	    		}
 	    	}
 	    	UNLOCK(dblock);
-	    	
-	    	len = write(client_fd, "Got your message, RFC added", 16);
+
+	    	char replybuffer[MAX_BUFFER_SIZE] = "";
+	    	snprintf(replybuffer, MAX_BUFFER_SIZE, "P2P-CI/1.0 200 OK\nRFC number %d\n", rfcnum);
+
+	    	len = write(client_fd, replybuffer, strlen(replybuffer) +1);
 	    	if (len < 0) {
 	        	fprintf(stderr, "write error: %s\n", strerror(errno));
 	        }
@@ -202,11 +207,14 @@ void * process_thread(void *obj) {
 	    	struct peer * temp = head;
 	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
 	        char tmpbuf[MAX_BUFFER_SIZE] = "";
+
+	        snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 200 OK\n");
+	        
 	        while (temp!= NULL) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
-	        	       snprintf(tmpbuf, MAX_NAME_LEN, "RFC number %d title %s hostname %s port %d\n", 
-	        		            iter->rfcnum, iter->title, temp->peer_name, temp->port);
+	        	       snprintf(tmpbuf, MAX_BUFFER_SIZE, "RFC number %d hostname %s port %d title %s\n", 
+	        		            iter->rfcnum, temp->peer_name, temp->port, iter->title);
 	        	       strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
 	        	       //fprintf(stderr, "%s\n", sendbuffer);
 	        	       iter= iter->next;
@@ -233,12 +241,15 @@ void * process_thread(void *obj) {
 	    	struct peer * temp = head;
 	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
 	        char tmpbuf[MAX_BUFFER_SIZE] = "";
+
+	        snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 200 OK\n");
+	        
 	        while (temp!= NULL) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
 	        	       if (iter->rfcnum == rfcnum) {
-	        	           snprintf(tmpbuf, MAX_NAME_LEN, "P2P-CI/1.0 200 OK\nRFC %d hostname %s port %d\n", 
-	        		                rfcnum, temp->peer_name, temp->port);
+	        	           snprintf(tmpbuf, MAX_BUFFER_SIZE, "RFC %d hostname %s port %d title %s\n", 
+	        		                rfcnum, temp->peer_name, temp->port, iter->title);
 	        	           strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
 	        	           //fprintf(stderr, "%s\n", sendbuffer);
 	        	       }
@@ -249,7 +260,7 @@ void * process_thread(void *obj) {
 
 	        UNLOCK(dblock);
 	        if (sendbuffer[0] == '\0') {
-	        	snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found");
+	        	snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 404 Not Found\n");
 	        }
 	        len = write(client_fd, sendbuffer, strlen(sendbuffer) + 1);
 	        if (len < 0) {
