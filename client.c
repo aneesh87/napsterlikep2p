@@ -97,6 +97,7 @@ void * process_thread(void * obj) {
               LOCK(rlock);
               //fprintf(stderr,"buffer has %s\n",tmpbuf);
               write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
+              fprintf(stdout, "Send Complete\n");
               fclose(fp);
               break;
           }
@@ -386,6 +387,7 @@ int main(int argc, char ** argv) {
                        fprintf(fp,"%s", buffer);
                        memset(buffer, 0, MAX_BUFFER_SIZE);
                 }
+                fprintf(stdout, "Download Complete\n");
                 fclose(fp);
                 LOCK(rlock);
                 

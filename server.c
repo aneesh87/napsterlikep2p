@@ -241,13 +241,14 @@ void * process_thread(void *obj) {
 	    	struct peer * temp = head;
 	    	char sendbuffer[LARGE_BUFFER_SIZE] = "";
 	        char tmpbuf[MAX_BUFFER_SIZE] = "";
-
-	        snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 200 OK\n");
 	        
 	        while (temp!= NULL) {
 	        	struct rfclist * iter = temp->rfchead;
 	        	while (iter != NULL) {
 	        	       if (iter->rfcnum == rfcnum) {
+	        	       	   if (sendbuffer[0] == '\0') {
+	        	       	       snprintf(sendbuffer, LARGE_BUFFER_SIZE, "P2P-CI/1.0 200 OK\n");
+	        	       	   }
 	        	           snprintf(tmpbuf, MAX_BUFFER_SIZE, "RFC %d hostname %s port %d title %s\n", 
 	        		                rfcnum, temp->peer_name, temp->port, iter->title);
 	        	           strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
