@@ -69,14 +69,14 @@ void * process_thread(void * obj) {
 
               struct stat sb;
               stat(rfcname, &sb);
-              snprintf(tmpbuf, MAX_BUFFER_SIZE, "Content-Length %lld\nTitle %s\n", 
+              snprintf(tmpbuf, MAX_BUFFER_SIZE, "P2P-CI/1.0 200 OK\nContent-Length %lld\nTitle %s\nContent-Type: text/text\n", 
                            (long long) sb.st_size, temp->title);
+              fprintf(stdout, "Sending RFC to peer\n");
               int len = write(client_fd, tmpbuf, strlen(tmpbuf) + 1);
               if (len < 0) {
                   fprintf(stderr, "write error: %s\n", strerror(errno));
               }
               int i = 0;
-              int mesg = 1;
               char ch;
               memset(tmpbuf, 0, MAX_BUFFER_SIZE);
 
@@ -86,22 +86,16 @@ void * process_thread(void * obj) {
 
               while ((ch=fgetc(fp))!=EOF) {
                     if(i==1024) {
-                       if (mesg ==1) {
-                          fprintf(stderr,"buffer has %s\n",tmpbuf);
-                       }
                        sleep(1);
                        write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
                        memset(tmpbuf, 0, MAX_BUFFER_SIZE);
                        i=0;
-                       mesg++;
                     }
                     tmpbuf[i]=ch;
                     i++;
               }
-
               LOCK(rlock);
-
-              fprintf(stderr,"buffer has %s\n",tmpbuf);
+              //fprintf(stderr,"buffer has %s\n",tmpbuf);
               write(client_fd, (void*) tmpbuf, strlen(tmpbuf)+1);
               fclose(fp);
               break;
@@ -349,29 +343,19 @@ int main(int argc, char ** argv) {
 
                 fprintf(stderr, "buffer %s\n", buffer);
 
-                // check for status code todo
+                // check for status code todo !!
 
-                char * ch = strstr(buffer, "Content-Length");
-                if (ch == NULL) {
-                    fprintf(stderr, "Unexpected error\n");
-                    continue;
-                }
                 char rfc_title[MAX_NAME_LEN];
                 char * t = strstr(buffer, "Title");
                 if (t!= NULL) {
                   while (*t != ' ') t++;
                   t++;
                   strncpy(rfc_title, t, MAX_NAME_LEN);
+                } else {
+                  fprintf(stderr, "Unexpected error\n");
+                  continue;
                 }
 
-                while (*ch != ' ') ch++;
-                ch++;
-                long long length = atol(ch);
-                fprintf(stderr, "length %lld\n", length);
-                long long num_message = length/1024;
-                if (length % 1024 !=0) {
-                    num_message++;
-                }
                 char rfcfile[MAX_NAME_LEN] = "";
                 snprintf(rfcfile, MAX_NAME_LEN, "rfc%d", rfcnum);
                 FILE * fp = fopen(rfcfile, "w");
@@ -379,21 +363,16 @@ int main(int argc, char ** argv) {
                   fprintf(stderr, "Unable to open file %s\n", rfcfile);
                   continue;
                 }
-
-                long long i = 1;
-                for (;i<=num_message;i++) {
-                    memset(buffer, 0, MAX_BUFFER_SIZE);
-                    len = read(peersock,  buffer, 1024 + 1);
-                    if (len < 0) {
-                        fprintf(stderr, "read error: %s\n", strerror(errno));
-                    }
-                    if (i == 1) {
-                        fprintf(stderr,"%s\n",buffer);
-                    }
-                    fprintf(fp,"%s", buffer);
+                fprintf(stdout, "Downloading RFC from peer\n");
+                memset(buffer, 0, MAX_BUFFER_SIZE);
+                while (read(peersock,  buffer, 1024 + 1) > 0) {
+                       if (len < 0) {
+                           fprintf(stderr, "read error: %s\n", strerror(errno));
+                       }
+                       fprintf(fp,"%s", buffer);
+                       memset(buffer, 0, MAX_BUFFER_SIZE);
                 }
                 fclose(fp);
-
                 LOCK(rlock);
                 
                 struct rfclist *rfctemp = (struct rfclist *)calloc(1, sizeof(struct rfclist));

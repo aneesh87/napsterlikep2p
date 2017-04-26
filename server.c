@@ -115,8 +115,6 @@ void * process_thread(void *obj) {
 	    
 	    memset(buffer, 0, MAX_BUFFER_SIZE);
 	    int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
-	    fprintf(stdout, "Client Mesg: %s %d\n", buffer, len);
-	    const char *token = strtok_r(buffer, " \n", &saveptr);
 
 	    if (len <= 0) {
 	    	db_remove_client(client_fd);
@@ -124,10 +122,14 @@ void * process_thread(void *obj) {
 	    	return (NULL);
 	    }
 
-            if (token == NULL) {
-                continue;
-            }
-
+	    if (buffer[0] != '\0') {
+	        fprintf(stdout, "Client Mesg: %s\n", buffer);
+	    }
+	    
+	    const char *token = strtok_r(buffer, " \n", &saveptr);
+        if (token == NULL) {
+            continue;
+        }
 	    if (strcmp(token, "EXIT") == 0 ) {
 	    
 	    	db_remove_client(client_fd);
