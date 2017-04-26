@@ -326,6 +326,11 @@ int main(int argc, char ** argv) {
                 peer_addr.sin_port = htons(cport);
 
                 peer=gethostbyname(peerhostname);
+
+                if (peer == NULL) {
+                  fprintf(stderr, "gethostbyname error: %s", strerror(errno));
+                  continue;
+                }
                 bcopy((char *)peer->h_addr,(char *)&peer_addr.sin_addr.s_addr,peer->h_length);
 
                 rc = connect(peersock, (struct sockaddr *) &peer_addr, sizeof(peer_addr));
