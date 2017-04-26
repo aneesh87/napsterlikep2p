@@ -115,14 +115,18 @@ void * process_thread(void *obj) {
 	    
 	    memset(buffer, 0, MAX_BUFFER_SIZE);
 	    int len = read(client_fd, buffer, MAX_BUFFER_SIZE);
-	    fprintf(stdout, "Client Mesg: %s\n", buffer);
+	    fprintf(stdout, "Client Mesg: %s %d\n", buffer, len);
 	    const char *token = strtok_r(buffer, " \n", &saveptr);
 
-	    if (token == NULL) {
+	    if (len <= 0) {
 	    	db_remove_client(client_fd);
 	    	close(client_fd);
 	    	return (NULL);
 	    }
+
+            if (token == NULL) {
+                continue;
+            }
 
 	    if (strcmp(token, "EXIT") == 0 ) {
 	    
@@ -202,7 +206,7 @@ void * process_thread(void *obj) {
 	        	       snprintf(tmpbuf, MAX_NAME_LEN, "RFC number %d title %s hostname %s port %d\n", 
 	        		            iter->rfcnum, iter->title, temp->peer_name, temp->port);
 	        	       strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
-	        	       fprintf(stderr, "%s\n", sendbuffer);
+	        	       //fprintf(stderr, "%s\n", sendbuffer);
 	        	       iter= iter->next;
 	        	}
 	        	temp = temp->next;
@@ -234,7 +238,7 @@ void * process_thread(void *obj) {
 	        	           snprintf(tmpbuf, MAX_NAME_LEN, "P2P-CI/1.0 200 OK\nRFC %d hostname %s port %d\n", 
 	        		                rfcnum, temp->peer_name, temp->port);
 	        	           strncat(sendbuffer, tmpbuf, LARGE_BUFFER_SIZE - strlen(sendbuffer));
-	        	           fprintf(stderr, "%s\n", sendbuffer);
+	        	           //fprintf(stderr, "%s\n", sendbuffer);
 	        	       }
 	        	       iter = iter->next;
 	        	}
