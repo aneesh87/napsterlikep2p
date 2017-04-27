@@ -329,8 +329,8 @@ int main(int argc, char ** argv) {
                     continue;
                 }
                 char peerhostname[MAX_NAME_LEN];
-                strncpy(peerhostname, rfcpeer[entry].hostname, MAX_NAME_LEN);
-                int cport = rfcpeer[entry].port;
+                strncpy(peerhostname, rfcpeer[entry-1].hostname, MAX_NAME_LEN);
+                int cport = rfcpeer[entry-1].port;
 
                 int peersock = socket(AF_INET, SOCK_STREAM, 0);
                 if (peersock < 0) {
