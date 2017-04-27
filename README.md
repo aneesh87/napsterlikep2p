@@ -4,11 +4,11 @@ To compile run make.
 
 To run server:
 =================================================
-./pserver <port number to listen for connections>
+./pserver \<port number to listen for connections>
 
 To run client:
 =================================================
-./pclient <server ip> <server port>
+./pclient \<server ip> \<server port>
 
 Note: for localhost server ip can be 127.0.0.1
 
