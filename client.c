@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <pthread.h>
 
+#define MAX_OPTIONS 10
+
 struct rfclist * head;
 int server_sock;
 
@@ -296,17 +298,37 @@ int main(int argc, char ** argv) {
                 if (status!= 200) {
                     continue;
                 }
+
+                struct peer_with_rfc {
+                  char hostname[MAX_NAME_LEN];
+                  int port;
+                } rfcpeer[MAX_OPTIONS];
+
                 // Take the first host
                 token = strtok_r(NULL, " \n", &saveptr); //OK
-                token = strtok_r(NULL, " \n", &saveptr); //RFC
-                token = strtok_r(NULL, " \n", &saveptr); //Number
-                token = strtok_r(NULL, " \n", &saveptr); //Hostname
-                token = strtok_r(NULL, " \n", &saveptr); //hostname
+                int u = 0;
+                while(strtok_r(NULL, " \n", &saveptr) != NULL && u < MAX_OPTIONS) { 
+                    token = strtok_r(NULL, " \n", &saveptr); //Number
+                    token = strtok_r(NULL, " \n", &saveptr); //Host
+                    token = strtok_r(NULL, " \n", &saveptr); //hostname
+                    strncpy(rfcpeer[u].hostname, token, MAX_NAME_LEN);
+                    token = strtok_r(NULL, " \n", &saveptr); //port
+                    token = strtok_r(NULL, " \n", &saveptr); //port value
+                    rfcpeer[u].port = atoi(token);
+                    u++;
+                    token = strtok_r(NULL, " \n", &saveptr); //skip port value
+                }
+                int entry;
+                fprintf(stdout, "Which peer entry you wish to contact ?(1-%d):",u);
+                scanf("%d",&entry);
+
+                if (entry > u) { 
+                    fprintf(stderr, "Invalid choice\n");
+                    continue;
+                }
                 char peerhostname[MAX_NAME_LEN];
-                strncpy(peerhostname, token, MAX_NAME_LEN);
-                token = strtok_r(NULL, " \n", &saveptr); //port
-                token = strtok_r(NULL, " \n", &saveptr);
-                int cport = atoi(token);
+                strncpy(peerhostname, rfcpeer[entry].hostname, MAX_NAME_LEN);
+                int cport = rfcpeer[entry].port;
 
                 int peersock = socket(AF_INET, SOCK_STREAM, 0);
                 if (peersock < 0) {
