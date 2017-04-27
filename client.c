@@ -316,7 +316,9 @@ int main(int argc, char ** argv) {
                     token = strtok_r(NULL, " \n", &saveptr); //port value
                     rfcpeer[u].port = atoi(token);
                     u++;
-                    token = strtok_r(NULL, " \n", &saveptr); //skip port value
+                    token = strtok_r(NULL, " \n", &saveptr); //at title
+                    token = strtok_r(NULL, " \n", &saveptr); //at actual title
+                    token = strtok_r(NULL, " \n", &saveptr); //skip title
                 }
                 int entry;
                 fprintf(stdout, "Which peer entry you wish to contact ?(1-%d):",u);
