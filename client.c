@@ -230,7 +230,7 @@ int main(int argc, char ** argv) {
     int ch;
     while (1) {
         fprintf(stdout, "\n\n Menu\n");
-        fprintf(stdout, "1. Add RFC's\n");
+        fprintf(stdout, "1. Add RFC's & Register\n");
         fprintf(stdout, "2. Lookup\n");
         fprintf(stdout, "3. List\n");
         fprintf(stdout, "4. Exit\n");
@@ -320,13 +320,15 @@ int main(int argc, char ** argv) {
                     token = strtok_r(NULL, " \n", &saveptr); //at actual title
                     token = strtok_r(NULL, " \n", &saveptr); //skip title
                 }
-                int entry;
-                fprintf(stdout, "Which peer entry you wish to contact ?(1-%d):",u);
-                scanf("%d",&entry);
+                int entry = 1;
 
-                if (entry > u) { 
-                    fprintf(stderr, "Invalid choice\n");
-                    continue;
+                if (u > 1) {
+                    fprintf(stdout, "Which peer entry you wish to contact ?(1-%d):",u);
+                    scanf("%d",&entry);
+                    if (entry > u || entry <= 0) { 
+                        fprintf(stderr, "Invalid choice\n");
+                        continue;
+                    }
                 }
                 char peerhostname[MAX_NAME_LEN];
                 strncpy(peerhostname, rfcpeer[entry-1].hostname, MAX_NAME_LEN);
