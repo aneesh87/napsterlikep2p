@@ -438,6 +438,7 @@ int main(int argc, char ** argv) {
                     fprintf(stderr, "read error: %s\n", strerror(errno));
                 }
                 printf("Server Replied: %s\n", buffer);
+                numrfc++;
             
             }
             break;

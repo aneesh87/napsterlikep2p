@@ -34,8 +34,8 @@ void * process_cmd(void * obj) {
     int ch;
     while (1) {
         fprintf(stdout, "\n\n Menu\n");
-        fprintf(stdout, "1. Active Peers\n");
-        fprintf(stdout, "2. Inactive Peers\n");
+        fprintf(stdout, "1. Active Registered Peers List\n");
+        fprintf(stdout, "2. Inactive Peers List\n");
         fprintf(stdout, "3. Exit\n");
         fprintf(stdout, "Enter choice: ");
         scanf("%d",&ch);
