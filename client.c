@@ -475,7 +475,8 @@ int main(int argc, char ** argv) {
                 fprintf(stderr, "Invalid choice\n");
 
         }
-
+        // while loop slow down to coordinate with server
+        sleep(1);
     }
     return 0;
 }
