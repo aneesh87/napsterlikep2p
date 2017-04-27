@@ -306,9 +306,9 @@ int main(int argc, char ** argv) {
 
                 // Take the first host
                 token = strtok_r(NULL, " \n", &saveptr); //OK
+                token = strtok_r(NULL, " \n", &saveptr); //Skip OK at RFC beginning
                 int u = 0;
-                while(strtok_r(NULL, " \n", &saveptr) != NULL && u < MAX_OPTIONS) { 
-                    token = strtok_r(NULL, " \n", &saveptr); //Number
+                while(strtok_r(NULL, " \n", &saveptr) != NULL && u < MAX_OPTIONS) { // RFC Number 
                     token = strtok_r(NULL, " \n", &saveptr); //Host
                     token = strtok_r(NULL, " \n", &saveptr); //hostname
                     strncpy(rfcpeer[u].hostname, token, MAX_NAME_LEN);
