@@ -4,7 +4,7 @@ To compile run make.
 
 To run server:
 =================================================
-./pserver \<port number to listen for connections>
+./pserver <port number to listen for connections>
 
 Example:
 
@@ -12,7 +12,7 @@ Example:
 
 To run client:
 =================================================
-./pclient \<server ip> \<server port>
+./pclient <server ip> <server port>
 
 Example:
 
@@ -32,4 +32,6 @@ Things to note:
 4) When a registered client exists, it moves to server inactive list. It remains there until it reopens connection to server from same ip and same port no.
 
 5) Tested on VCL Ubuntu 14.04 Base images.
+
+6) The rfc files must be present in PWD (Present Working Directory) of the pclients, which is directory from which clients are run. The rfc file name should be in format rfc_<rfcnumber>.
 
