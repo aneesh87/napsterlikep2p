@@ -6,9 +6,17 @@ To run server:
 =================================================
 ./pserver \<port number to listen for connections>
 
+Example:
+
+./pserver 7890
+
 To run client:
 =================================================
 ./pclient \<server ip> \<server port>
+
+Example:
+
+./pclient 127.0.0.1 7890
 
 Note: for localhost server ip can be 127.0.0.1
 
