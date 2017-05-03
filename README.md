@@ -1,5 +1,3 @@
-Studentid: agupta27 Studentid: tchuang3
-
 To compile run make.
 
 To run server:
@@ -12,7 +10,7 @@ Example:
 
 To run client:
 =================================================
-./pclient <server ip> <server port>
+./pclient \<server ip> \<server port>
 
 Example:
 
@@ -33,5 +31,5 @@ Things to note:
 
 5) Tested on VCL Ubuntu 14.04 Base images.
 
-6) The rfc files must be present in PWD (Present Working Directory) of the pclients, which is directory from which clients are run. The rfc file name should be in format rfc_<rfcnumber>.
+6) The rfc files must be present in PWD (Present Working Directory) of the pclients, which is directory from which clients are run. The rfc file name should be in format rfc\<rfcnumber>.
 
